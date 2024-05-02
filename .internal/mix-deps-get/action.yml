@@ -1,0 +1,22 @@
+name: mix-deps-get
+description: Fetch Mix dependencies
+
+inputs:
+  cd:
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - name: Fetch Mix dependencies
+      shell: bash
+      run: |
+        cd ${{ inputs.cd }}
+        n=0
+        until [ $n -ge 5 ]; do
+          mix deps.get && break
+          n=$((n+1))
+          echo "Error while fetching deps. Retrying in 5 seconds"
+          sleep 5
+        done

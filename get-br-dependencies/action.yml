@@ -1,0 +1,77 @@
+name: get-br-dependencies
+description: Get buildroot dependencies
+
+inputs:
+  otp-version:
+    required: true
+    description: Set OTP version to use
+  elixir-version:
+    required: true
+    description: Set Elixir version to use
+  nerves-bootstrap-version:
+    required: true
+    description: Set nerves bootstrap version to use
+  hex-validate:
+    required: false
+    type: boolean
+    default: true
+  save-dl-cache:
+    required: false
+    description: Cache the packages downloaded by Buildroot (`~/.nerves/dl`)
+    type: boolean
+    default: true
+  push-to-download-site:
+    required: false
+    description: Push Buildroot packages to aws s3 bucket
+    type: boolean
+    default: false
+  download-site-url:
+    required: false # required if `push-to-download-site` is true
+    description: public URL for downloading packages uploaded to the aws s3 bucket
+    default: 'http://dl.nerves-project.org'
+  download-site-bucket-uri:
+    required: false # required if `push-to-download-site` is true
+    description: aws s3 bucket uri for uploading buildroot packages
+  aws-access-key-id:
+    required: false # required if `push-to-download-site` is true
+  aws-secret-access-key:
+    required: false # required if `push-to-download-site` is true
+  aws-region:
+    required: false # required if `push-to-download-site` is true
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.actions/.internal/setup-beam-nerves
+      with:
+        otp-version: ${{ inputs.otp-version }}
+        elixir-version: ${{ inputs.elixir-version }}
+        nerves-bootstrap-version: ${{ inputs.nerves-bootstrap-version }}
+    - uses: ./.actions/.internal/restore-nerves-downloads
+    - uses: ./.actions/.internal/mix-deps-get
+    - name: Validate Hex package
+      if: inputs.hex-validate == 'true'
+      shell: bash
+      run: mix hex.build
+    - name: Get Buildroot dependencies
+      if: inputs.push-to-download-site != 'true'
+      shell: bash
+      run: |
+        ./deps/nerves_system_br/create-build.sh nerves_defconfig ~/temp_nerves_system
+        cd ~/temp_nerves_system
+        make source
+    - name: Get Buildroot dependencies on push-to-download-site
+      if: inputs.push-to-download-site == 'true'
+      uses: ./.actions/.internal/push-to-download-site
+      with:
+        download-site-url: ${{ inputs.download-site-url }}
+        download-site-bucket-uri: ${{ inputs.download-site-bucket-uri }}
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
+    - name: Save Nerves downloads
+      if: inputs.save-dl-cache == 'true'
+      uses: actions/cache/save@v4
+      with:
+        path: ~/.nerves/dl
+        key: nerves-dl-${{ github.ref_name }}-${{ github.sha }}
