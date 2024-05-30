@@ -1,0 +1,23 @@
+name: cache-buildroot-ccache
+description: Cache the buildroot ccache
+
+runs:
+  using: composite
+  steps:
+    - name: Get toolchains
+      shell: bash
+      run: |
+        mkdir .toolchains
+        for toolchain in ~/.nerves/dl/nerves_toolchain_*; do
+          ln -s ${toolchain} .toolchains/
+        done
+        ls -l .toolchains/
+    - name: Cache the buildroot ccache
+      uses: actions/cache@v4
+      with:
+        path: ~/.buildroot-ccache
+        key: buildroot-ccache-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.toolchains/') }}
+    - name: Cleanup toolchains
+      shell: bash
+      run: |
+        rm -rf .toolchains

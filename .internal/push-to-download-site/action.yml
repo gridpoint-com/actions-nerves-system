@@ -1,0 +1,47 @@
+name: push-to-download-site
+description: Get Buildroot dependencies and push to download site
+
+inputs:
+  download-site-url:
+    required: true
+  download-site-bucket-uri:
+    required: true
+  aws-access-key-id:
+    required: true
+  aws-secret-access-key:
+    required: true
+  aws-region:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Get Buildroot dependencies
+      shell: bash
+      run: |
+        ./deps/nerves_system_br/create-build.sh nerves_defconfig ~/temp_nerves_system
+        cd ~/temp_nerves_system
+
+        make \
+          BR2_PRIMARY_SITE=${{ inputs.download-site-url }} \
+          BR2_BACKUP_SITE=http://sources.buildroot.net \
+          source
+    - name: Push new packages to download site
+      if: inputs.push-to-download-site == 'true'
+      shell: bash
+      run: |
+        apt install -y python3-pip
+        pip install awscli
+
+        aws configure set aws_access_key_id ${{ inputs.aws-access-key-id }}
+        aws configure set aws_secret_access_key ${{ inputs.aws-secret-access-key }}
+        aws configure set region ${{ inputs.aws-region }}
+
+        aws s3 sync ~/.nerves/dl ${{ inputs.download-site-bucket-uri }} \
+          --exclude "*" \
+          --include "*.tar.*" \
+          --include "*.patch.*" \
+          --include "*.patch" \
+          --include "*-patch.*" \
+          --exclude ".lock" \
+          --exclude "*git/*"

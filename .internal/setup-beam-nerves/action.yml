@@ -1,0 +1,23 @@
+name: setup-beam-nerves
+description: Setup beam with otp/elixir version provided and setup nerves bootstrap with version provided
+
+inputs:
+  otp-version:
+    required: true
+  elixir-version:
+    required: true
+  nerves-bootstrap-version:
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Beam
+      uses: erlef/setup-beam@v1
+      with:
+        otp-version: ${{ inputs.otp-version }}
+        elixir-version: ${{ inputs.elixir-version }}
+    - name: Install nerves_bootstrap
+      shell: bash
+      run: |
+        mix archive.install --force hex nerves_bootstrap ${{ inputs.nerves-bootstrap-version }}

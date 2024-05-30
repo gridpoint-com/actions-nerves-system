@@ -1,0 +1,70 @@
+name: build-system
+
+inputs:
+  otp-version:
+    required: true
+  elixir-version:
+    required: true
+  nerves-bootstrap-version:
+    required: true
+  hex-validate:
+    required: false
+    type: boolean
+    default: true
+  enable-ccache:
+    required: false
+    type: boolean
+    default: true
+  ccache-initial-setup:
+    required: false
+    default: --max-size=1G
+
+runs:
+  using: composite
+  steps:
+    - uses: ./.actions/.internal/setup-beam-nerves
+      with:
+        otp-version: ${{ inputs.otp-version }}
+        elixir-version: ${{ inputs.elixir-version }}
+        nerves-bootstrap-version: ${{ inputs.nerves-bootstrap-version }}
+    - uses: ./.actions/.internal/restore-nerves-downloads
+    - uses: ./.actions/.internal/mix-deps-get
+    - name: Validate Hex package
+      if: inputs.hex-validate == 'true'
+      shell: bash
+      run: mix hex.build
+    - name: Restore ccache
+      if: inputs.enable-ccache == 'true'
+      uses: ./.actions/.internal/cache-buildroot-ccache
+    - name: Build
+      shell: bash
+      run: |
+        if [[ "${{ inputs.enable-ccache }}" = "true" ]]; then
+          export BR2_CCACHE=y
+          export BR2_CCACHE_DIR=~/.buildroot-ccache
+          export BR2_CCACHE_INITIAL_SETUP="${{ inputs.ccache-initial-setup }}"
+        fi
+        mix compile
+    - name: Did I really build
+      shell: bash
+      run: |
+        [ -d .nerves ] || (echo "VERSION file needs to be bumped or a config file needs to change to force a build"; exit 1)
+    - name: Lint
+      shell: bash
+      run: mix nerves.system.lint nerves_defconfig
+    - name: Create artifacts
+      shell: bash
+      run: |
+        mkdir -p deploy/system/artifacts
+        cp ./CHANGELOG.md deploy/system/CHANGELOG.md
+        mix nerves.artifact ${GITHUB_REPOSITORY#*/} --path deploy/system/artifacts
+    - name: Store artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        path: deploy/system/artifacts
+        name: system
+    - name: Save deploy cache
+      uses: actions/cache/save@v4
+      with:
+        path: deploy/system
+        key: deploy/system-${{ github.sha }}-${{ github.ref_name }}
