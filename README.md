@@ -14,24 +14,33 @@ env:
   ELIXIR_VERSION: 1.16.2-otp-26
   NERVES_BOOTSTRAP_VERSION: 1.12.1
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   get-br-dependencies:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
       - name: Get Buildroot Dependencies
         uses: ./.actions/get-br-dependencies
         with:
           otp-version: ${{ env.OTP_VERSION }}
           elixir-version: ${{ env.ELIXIR_VERSION }}
           nerves-bootstrap-version: ${{ env.NERVES_BOOTSTRAP_VERSION }}
+          push-to-download-site: true
+          download-site-url: ${{ vars.PUBLIC_S3_SITE }}
+          download-site-bucket-uri: ${{ vars.S3_BUCKET }}
+          aws-role: ${{ secrets.AWS_ROLE }}
+          aws-region: ${{ vars.AWS_REGION }}
   build-system:
     needs: [get-br-dependencies]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
       - name: Build nerves_system
         uses: ./.actions/build-system
         with:
@@ -44,7 +53,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
       - name: Deploy nerves_system
         uses: ./.actions/deploy-system
         with:
@@ -60,13 +69,13 @@ to be used within the job.
 ```yaml
     steps:
       - uses: actions/checkout@v4
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
 ```
 
 ### get-br-dependencies
 
 ```yaml
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
       - name: Get Buildroot Dependencies
         uses: ./.actions/get-br-dependencies
         with:
@@ -95,10 +104,9 @@ to be used within the job.
           # Required only if push-to-download-site is true
           download-site-bucket-uri: 's3://your-s3-bucket/uri/'
 
-          # aws s3 credentials and region
+          # aws role and region with write access to download-site-bucket-uri
           # Required only if push-to-download-site is true
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-role: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
 ```
 
@@ -125,9 +133,15 @@ packages from there first. If they don't exist, the normal download URLs will
 be tried and if those fail, Buildroot's backup download site will be tried.
 
 This action can push new packages to the download site for future builds. Only
-AWS S3 is supported. To use this feature, you will need to set the following to
-the `./.actions/get-br-dependencies` action:
+AWS S3 is supported. To use this feature, you will need to set the following
+permissions before the `jobs:` in your workflow:
+```yaml
+permissions:
+  id-token: write
+  contents: read
+```
 
+And you will need to set the following in the `./.actions/get-br-dependencies` action:
 ```yaml
           push-to-download-site: true
 
@@ -137,9 +151,8 @@ the `./.actions/get-br-dependencies` action:
           # aws s3 bucket uri for uploading buildroot packages
           download-site-bucket-uri: 's3://your-s3-bucket/uri/'
 
-          # aws s3 credentials and region
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          # aws role and region with write access to download-site-bucket-uri
+          aws-role: ${{ secrets.AWS_ROLE }}
           aws-region: ${{ vars.AWS_REGION }}
 ```
 
@@ -161,18 +174,21 @@ the `./.actions/get-br-dependencies` action:
 }
 ```
 
-- In the AWS dashboard, create an AWS access key for the AWS user account that
-  CI will use to access the S3 bucket.
+- In the AWS dashboard, create an AWS role that CI will use to access the S3 bucket.
 
 - If you would like your Nerves system to pull packages from the download site
   when building outside of CI, set the Buildroot primary site in your Nerves
   system `nerves_defconfig` file to the S3 bucket URL:
   `BR2_PRIMARY_SITE="https://<bucket-name>.s3.amazonaws.com"`
 
+- For more details, reference the following documents:
+  * [use iam roles to connect github actions to actions in aws](https://aws.amazon.com/blogs/security/use-iam-roles-to-connect-github-actions-to-actions-in-aws/)
+  * [configuring openid connect in amazone web services](https://docs.github.com/en/actions/deployment/security-hardening-your-deployments/configuring-openid-connect-in-amazon-web-services)
+
 ### build-system
 
 ```yaml
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
       - name: Build nerves_system
         uses: ./.actions/build-system
         with:
@@ -222,7 +238,7 @@ The `./.actions/deploy-system` action should only be run after a job running the
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
-      - uses: gridpoint-com/actions-nerves-system@v0
+      - uses: gridpoint-com/actions-nerves-system@v1
       - name: Deploy nerves_system
         uses: ./.actions/deploy-system
         with:
