@@ -32,9 +32,7 @@ inputs:
   download-site-bucket-uri:
     required: false # required if `push-to-download-site` is true
     description: aws s3 bucket uri for uploading buildroot packages
-  aws-access-key-id:
-    required: false # required if `push-to-download-site` is true
-  aws-secret-access-key:
+  aws-role:
     required: false # required if `push-to-download-site` is true
   aws-region:
     required: false # required if `push-to-download-site` is true
@@ -66,8 +64,7 @@ runs:
       with:
         download-site-url: ${{ inputs.download-site-url }}
         download-site-bucket-uri: ${{ inputs.download-site-bucket-uri }}
-        aws-access-key-id: ${{ inputs.aws-access-key-id }}
-        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-role: ${{ inputs.aws-role }}
         aws-region: ${{ inputs.aws-region }}
     - name: Save Nerves downloads
       if: inputs.save-dl-cache == 'true'
