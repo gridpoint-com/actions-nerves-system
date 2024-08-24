@@ -51,6 +51,8 @@ jobs:
     needs: [build-system]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: gridpoint-com/actions-nerves-system@v1
@@ -213,22 +215,6 @@ And you will need to set the following in the `./.actions/get-br-dependencies` a
 
 ### deploy-system
 
-A GitHub personal access token to be able to create the GitHub draft release.
-
-To create this token:
-  - Navigate to your GitHub [user settings](https://github.com/settings)
-(click avatar) `->` [developer settings](https://github.com/settings/apps) `->` personal access tokens `->`
-fine-grained tokens.
-  - Click the `generate new token` button.
-  - Fill out the fields according to your needs until you get to
-    `repository access`.
-  - Select either `all repositories` or `only select repositories`.
-  - Under `repository permissions`, set:
-    - `Contents` - read and write
-    - `Metadata` - read-only
-
-Add this token as a secret in your github repo and use it as the `github-token` parameter to the `./.actions/deploy-system` action.
-
 The `./.actions/deploy-system` action should only be run after a job running the `./.actions/build-system` action and only on a pushed tag.
 
 ```yaml
@@ -236,13 +222,13 @@ The `./.actions/deploy-system` action should only be run after a job running the
     needs: [build-system]
     if: github.ref_type == 'tag'
     runs-on: ubuntu-22.04
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: gridpoint-com/actions-nerves-system@v1
       - name: Deploy nerves_system
         uses: ./.actions/deploy-system
-        with:
-          github-token: ${{ secrets.ARTIFACT_GITHUB_TOKEN }}
 ```
 
 ### Creating a release
@@ -256,7 +242,8 @@ To create a release for your custom Nerves system:
   - Add a tag to this commit named after the version that *includes* the leading
     `v` (`v1.0.0`).
   - Push the commit and tag to the git remote (GitHub).
-  - The `deploy-system` job will run when the tag is pushed and create a draft
-  release with the Nerves system artifact.
+  - The `deploy-system` job will run when the tag is pushed. It will create a
+    `v<VERSION>` draft release with the `CHANGELOG.md` notes and compiled Nerves
+    system artifact.
   - Review the draft release in GitHub, change the name, and publish the
-  release.
+    release.
