@@ -1,9 +1,5 @@
 name: deploy-system
 
-inputs:
-  github-token:
-    required: true
-
 runs:
   using: composite
   steps:
@@ -12,26 +8,13 @@ runs:
       with:
         path: deploy/system
         key: deploy/system-${{ github.sha }}-${{ github.ref_name }}
-    - uses: ./.actions/.internal/install-ghr
     - name: Create release notes
       shell: bash
       run: |
         export REF_NAME=$(echo "${{ github.ref_name }}" | sed 's,[\\\^\$\.\|\?\*\+\(\)\[\]]*,\\\0,g')
         grep -Pazo "(?s)(?<=## ${REF_NAME})[^#]+" deploy/system/CHANGELOG.md | sed '/./,$!d' | tr -d '\0' > deploy/system/RELEASE_NOTES
         echo "$(< deploy/system/RELEASE_NOTES)"
-    - name: Get reponame
-      shell: bash
-      run: |
-        export GITHUB_ORG_REPO=${{ github.repository }}
-        echo "REPONAME=${GITHUB_ORG_REPO#*/}" >> $GITHUB_ENV
     - name: Deploy artifacts to Github
       shell: bash
       run: |
-        ./ghr \
-          -draft \
-          -token ${{ inputs.github-token }} \
-          -username ${{ github.repository_owner }} \
-          -repository ${{ env.REPONAME }} \
-          -body "$(< deploy/system/RELEASE_NOTES)" \
-          -replace \
-          ${{ github.ref_name }} deploy/system/artifacts
+        gh release create ${{ github.ref_name }} deploy/system/artifacts --title ${{ github.ref_name }} -F deploy/system/RELEASE_NOTES --draft
