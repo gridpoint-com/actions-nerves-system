@@ -59,7 +59,7 @@ jobs:
       - name: Deploy nerves_system
         uses: ./.actions/deploy-system
         with:
-          github-token: ${{ secrets.ARTIFACT_GITHUB_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ## Setup for use
@@ -229,7 +229,19 @@ The `./.actions/deploy-system` action should only be run after a job running the
       - uses: gridpoint-com/actions-nerves-system@v1
       - name: Deploy nerves_system
         uses: ./.actions/deploy-system
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
+
+> [!NOTE]
+> `GITHUB_TOKEN` is provided in every action as a secret which needs
+> to be passed to the job using it via `${{ secrets.GITHUB_TOKEN }}`
+> You can also control the permissions for it which must be
+> `contents: write` in order to create the release
+>
+> See docs for more info:
+> * https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/using-github-cli-in-workflows
+> * https://docs.github.com/en/actions/writing-workflows/choosing-what-your-workflow-does/controlling-permissions-for-github_token 
 
 ### Creating a release
 
