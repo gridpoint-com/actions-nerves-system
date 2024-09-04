@@ -31,4 +31,4 @@ runs:
       env:
         GH_TOKEN: ${{ inputs.github-token }}
       run: |
-        gh release create ${{ github.ref_name }} deploy/system/artifacts --title ${{ github.ref_name }} -F deploy/system/RELEASE_NOTES --draft
+        gh release create ${{ github.ref_name }} deploy/system/artifacts/* --title ${{ github.ref_name }} -F deploy/system/RELEASE_NOTES --draft
